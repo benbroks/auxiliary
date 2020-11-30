@@ -1,15 +1,20 @@
 import keras
 import glob
 import os
+import pickle
 
 import pandas as pd 
 import numpy as np
+
+from utk_face_data_generator import UtkFaceDataGenerator
 
 from keras.models import Sequential, Model
 from keras.layers import Input, Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import RMSprop
+
+import matplotlib.pyplot as plt
 
 from keras.utils import to_categorical
 from PIL import Image
@@ -68,103 +73,22 @@ class AuxModel:
         
         return aux_model
 
-class UtkFaceDataGeneratorAuxModel():
+class UtkFaceDataGeneratorAuxOneModel(UtkFaceDataGenerator):
     """
-    Data generator for the UTKFace dataset. This class should be used when training our Keras multi-output model.
+    Data generator for the UTKFace dataset. This class should be used when training our Keras auxiliary model.
     """
     def __init__(
         self, 
         dataset_path, 
         a,
-        dataset_dict, 
-        IM_WIDTH=198, 
-        IM_HEIGHT=198, 
-        TRAIN_TEST_SPLIT=0.7,
-        age_buckets = [25,45,117],
+        dataset_dict,
     ):
-        self.dataset_dict = dataset_dict
-        self.parse_dataset(dataset_path)
+        super().__init__(dataset_path, a, dataset_dict)
         self.a = a
-        self.IM_WIDTH = IM_WIDTH
-        self.IM_HEIGHT = IM_HEIGHT
-        self.TRAIN_TEST_SPLIT = TRAIN_TEST_SPLIT
-        self.age_buckets = age_buckets
-
-    def parse_info_from_file(self,path):
-        """
-        Parse information from a single file
-        """
-        try:
-            filename = os.path.split(path)[1]
-            filename = os.path.splitext(filename)[0]
-            age, gender, race, _ = filename.split('_')
-
-            return int(age), self.dataset_dict['gender_id'][int(gender)], self.dataset_dict['race_id'][int(race)]
-        except Exception as ex:
-            return None, None, None
     
-    def parse_dataset(self, dataset_path, ext='jpg'):
-        """
-        Used to extract information about our dataset. It does iterate over all images and return a DataFrame with
-        the data (age, gender and sex) of all files.
-        """ 
-        files = glob.glob(os.path.join(dataset_path, "*.%s" % ext))
-        
-        records = []
-        for file in files:
-            info = self.parse_info_from_file(file)
-            records.append(info)
-            
-        self.df = pd.DataFrame(records)
-        self.df['file'] = files
-        self.df.columns = ['age', 'gender', 'race', 'file']
-        self.df = self.df.dropna()
-
-    ## 3 Ages, 5 Ethnicites, 2 Genders ## -> 30 Possible Combinations
-    # Age will be worth 10
-    # Ethnicity will be worth 2
-    # Gender will be worth 1
-    # def convert_tuple_to_status(a,e,g): 
-    #    return a*10 + e*2 + g
-    def convert_tuple_to_status(self,a,e): # Just age and gender
-        return a*5 + e
-
-    def convert_age_to_bucket(self,age):
-        for i, a in enumerate(self.age_buckets):
-            if age <= a:
-                return i
-        return len(self.age_buckets)-1
-        
-    def generate_split_indexes(self):
-        p = np.random.permutation(len(self.df))
-        train_up_to = int(len(self.df) * self.TRAIN_TEST_SPLIT)
-        train_idx = p[:train_up_to]
-        test_idx = p[train_up_to:]
-
-        train_up_to = int(train_up_to * self.TRAIN_TEST_SPLIT)
-        train_idx, valid_idx = train_idx[:train_up_to], train_idx[train_up_to:]
-        
-        # converts alias to id
-        self.df['gender_id'] = self.df['gender'].map(lambda gender: self.dataset_dict['gender_alias'][gender])
-        self.df['race_id'] = self.df['race'].map(lambda race: self.dataset_dict['race_alias'][race])
-
-        self.max_age = self.df['age'].max()
-        
-        return train_idx, valid_idx, test_idx
-    
-    def preprocess_image(self, img_path):
-        """
-        Used to perform some minor preprocessing on the image before inputting into the network.
-        """
-        im = Image.open(img_path)
-        im = im.resize((self.IM_WIDTH, self.IM_HEIGHT))
-        im = np.array(im) / 255.0
-        
-        return im
-        
     def generate_images(self, image_idx, is_training, batch_size=16):
         """
-        Used to generate a batch with images when training/testing/validating our Keras model.
+        Overriding generate images from base class. Only returning status as output rather than age/race/gender.
         """
         
         # arrays to store our batched data
@@ -175,8 +99,6 @@ class UtkFaceDataGeneratorAuxModel():
                 
                 age = self.convert_age_to_bucket(person['age'])
                 race = to_categorical(person['race_id'],len(self.dataset_dict['race_id'])).argmax(axis=-1)
-                # gender = to_categorical(person['gender_id'],len(dataset_dict['gender_id'])).argmax(axis=-1)
-                # s = convert_tuple_to_status(age,race,gender)
                 s = self.convert_tuple_to_status(age,race)
                 if s in self.a:
                     s = 0
@@ -196,7 +118,7 @@ class UtkFaceDataGeneratorAuxModel():
             if not is_training:
                 break
 
-class AuxPipeline:
+class AuxOnePipeline:
     def __init__(
         self,
         dataset_folder_name = 'UTKFace',
@@ -227,7 +149,8 @@ class AuxPipeline:
     
     def train_models(
         self,
-        set_partitions,
+        partitions_path,
+        graphs_path,
         init_lr = 1e-4,
         train_batch_size = 32,
         valid_batch_size = 32,
@@ -235,21 +158,28 @@ class AuxPipeline:
         epochs = 100,
         checkpoint_path="checkpoint/aux_compressed_epochs_", # This version only looks at race + age (not gender)
     ):
+        with open(partitions_path, "rb") as fp:   # Unpickling
+            set_partitions = pickle.load(fp)
         # Training Auxiliary Models!
-        for i in range(10,int(epochs/epoch_batch)):
-            data_generator_aux = UtkFaceDataGeneratorAuxModel(self.dataset_folder_name,set_partitions[i],self.dataset_dict)
+        #for i in range(0,int(epochs/epoch_batch)):
+        for i in range(11):
+            data_generator_aux = UtkFaceDataGeneratorAux1Model(self.dataset_folder_name,set_partitions[i],self.dataset_dict)
             aux_train_idx, aux_valid_idx, aux_test_idx = data_generator_aux.generate_split_indexes()
 
             aux_train_gen = data_generator_aux.generate_images(aux_train_idx, is_training=True, batch_size=train_batch_size)
             aux_valid_gen = data_generator_aux.generate_images(aux_valid_idx, is_training=True, batch_size=valid_batch_size)
 
             aux_model = self.build_model()
-            history = aux_model.fit_generator(aux_train_gen,
+            history = aux_model.fit(aux_train_gen,
                             steps_per_epoch=len(aux_train_idx)//train_batch_size,
                             epochs=(i+1)*5,
                             validation_data=aux_valid_gen,
                             validation_steps=len(aux_valid_idx)//valid_batch_size)
-            aux_model.save(checkpoint_path+str((i+1)*5))
+            aux_model.save(str(checkpoint_path)+"_"+str((i+1)*5))  
+            y = history.history['val_loss'] 
+            plt.plot([i for i in range(len(y))],history.history['val_loss'])
+            plt.title("Auxiliary (One Output) Model Validation Loss - {} Epochs".format((i+1)*5))
+            plt.savefig(graphs_path / "aux_one_val_loss_{}".format((i+1)*5))
 
         
         

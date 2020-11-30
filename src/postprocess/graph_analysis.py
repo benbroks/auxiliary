@@ -3,20 +3,10 @@ import numpy as np
 import pickle
 
 class MaxCutImplementations:
-    def __init__(self, cfm, lower=None):
+    def __init__(self, cfm):
         self.n = len(cfm)
-        if lower is None:
-            self.cfm = cfm
-        else:
-            self.cfm = []
-            for i in range(self.n):
-                self.cfm.append([0]*self.n)
-                for j in range(self.n):
-                    if i < j and not lower:
-                        self.cfm[i][j] = cfm[i][j]
-                    elif i > j and lower:
-                        self.cfm[i][j] = cfm[i][j]
-    
+        self.cfm = cfm
+            
     def compareNodes(self,i,j):
         if i < 0 or i >= self.n or j < 0 or j >= self.n:
             raise ValueError("Node is invalid. Index is too big/small.")
@@ -99,28 +89,72 @@ class MaxCutImplementations:
                 b = set(candidate_b)
         return a,b
 
-def graph_pipeline(base_cfms_path, partitions_path=None, dual_partitions=False):
+## THERE ARE THREE GRAPH SETUP CHOICES ##
+def single_cfm(base_cfms,num=20):
     set_partitions = []
-    base_cfms = np.load(base_cfms_path,allow_pickle=True)
-    for i in range(0,20):
-        if dual_partitions:
-            # Lower CFM
-            c = MaxCutImplementations(base_cfms[i],lower=True)
-            a,b = c.approxMaxCut()
-            set_partitions.append(a)
-            print("Lower Triangular Partition Base Epoch {i}:".format(i=(i+1)*5), a, b)
-            # Upper CFM
-            c = MaxCutImplementations(base_cfms[i],lower=False)
-            a,b = c.approxMaxCut()
-            print("Upper Triangular Partition at Base Epoch {i}:".format(i=(i+1)*5), a, b)
-            set_partitions.append(a)
-        else:
-            # Full CFM
-            c = MaxCutImplementations(base_cfms[i])
-            a,b = c.approxMaxCut()
-            print("Partition Base Epoch {i}:".format(i=(i+1)*5), a, b)
-            set_partitions.append(a)
+    for i in range(num):
+        # Full CFM
+        c = MaxCutImplementations(base_cfms[i])
+        a,b = c.approxMaxCut()
+        print("Partition Base Epoch {i}:".format(i=(i+1)*5), a, b)
+        set_partitions.append(a)
+    return set_partitions
 
+def dual_cfm(base_cfms,num=20):
+    def tri_matrix(cfm,lower=False):
+        n = len(cfm)
+        result = []
+        for i in range(n):
+            result.append([0]*n)
+            for j in range(n):
+                if i < j and not lower:
+                    result[i][j] = cfm[i][j]
+                elif i > j and lower:
+                    result[i][j] = cfm[i][j]
+        return result
+    
+    set_partitions = []
+    for i in range(num):
+        # Lower CFM
+        c = MaxCutImplementations(tri_matrix(base_cfms[i],lower=True))
+        a,b = c.approxMaxCut()
+        set_partitions.append(a)
+        print("Lower Triangular Partition Base Epoch {i}:".format(i=(i+1)*5), a, b)
+        # Upper CFM
+        c = MaxCutImplementations(tri_matrix(base_cfms[i],lower=False))
+        a,b = c.approxMaxCut()
+        print("Upper Triangular Partition at Base Epoch {i}:".format(i=(i+1)*5), a, b)
+        set_partitions.append(a)
+    return set_partitions
+
+def race_cfms(base_cfms,num=20):
+    def race_connected_cfm(cfm):
+        n = len(cfm)
+        for row in range(n):
+            for column in range(n):
+                if column % 5 != row % 5:
+                    cfm[row][column] = 0
+        return cfm
+    set_partitions = []
+    for i in range(num):
+        # Full CFM
+        c = MaxCutImplementations(race_connected_cfm(base_cfms[i]))
+        a,b = c.approxMaxCut()
+        print("Partition Base Epoch {i}:".format(i=(i+1)*5), a, b)
+        set_partitions.append(a)
+    return set_partitions
+
+
+def graph_pipeline(base_cfms_path, partitions_path=None, status=0):
+    base_cfms = np.load(base_cfms_path,allow_pickle=True)
+    num_iter = 20
+    ## PICK YOUR GRAPH SETUP VIA status parameter ##
+    if status == 0:
+        set_partitions = single_cfm(base_cfms,num_iter)
+    elif status == 1:
+        set_partitions = dual_cfm(base_cfms,num_iter)
+    else:
+        set_partitions = race_cfms(base_cfms,num_iter)
     if partitions_path is not None:
         with open(partitions_path, "wb") as fp:   #Pickling
             pickle.dump(set_partitions, fp)

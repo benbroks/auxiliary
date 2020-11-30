@@ -81,7 +81,7 @@ def age_accuracy_by_race(cfm):
 
 if __name__ == "__main__":
     # Evaluate Accuracy of Base Models (5-100)
-    base_cfms = np.load(cfm_dir / 'final_cfms_15.npy',allow_pickle=True)
+    base_cfms = np.load(cfm_dir / 'final_cfms_one_15.npy',allow_pickle=True)
     print("Loaded CFMs.")
     x = []
     a_r_var = []
@@ -89,21 +89,21 @@ if __name__ == "__main__":
 
     for i in range(len(base_cfms)):
         cfm = base_cfms[i]
-        to_gephi(cfm,cfm_dir / "{}_full_v2.csv".format(i))
+        to_gephi(cfm,cfm_dir / "{}_full.csv".format(i))
         a_cfm,r_cfm = create_sub_cfms(cfm)
-        to_gephi(a_cfm,cfm_dir /"{}_age_v2.csv".format(i))
-        to_gephi(r_cfm,cfm_dir /"{}_race_v2.csv".format(i))
+        to_gephi(a_cfm,cfm_dir /"{}_age.csv".format(i))
+        to_gephi(r_cfm,cfm_dir /"{}_race.csv".format(i))
         x.append((i+1)*5)
         acc, var = age_accuracy_by_race(cfm)
         a_r_var.append(var)
         a_acc.append(acc)
     
     plt.scatter(x,a_r_var)
-    plt.title("Hierarchical (2 Output Aux): Statistical Parity of Age Accuracy (by Race) - 5 Classes")
-    plt.savefig(graphs_dir / "a_r_acc_v2.jpg")
+    plt.title("Hierarchical (1 Output Aux): Statistical Parity of Age Accuracy (by Race) - 5 Classes")
+    plt.savefig(graphs_dir / "a_r_acc.jpg")
     plt.show()
     plt.scatter(x,a_acc)
-    plt.title("Hierarchical (2 Output Aux): Age Accuracy - 3 Classes")
-    plt.savefig(graphs_dir / "a_acc_v2.jpg")
+    plt.title("Hierarchical (1 Output Aux): Age Accuracy - 3 Classes")
+    plt.savefig(graphs_dir / "a_acc.jpg")
     plt.show()
 
