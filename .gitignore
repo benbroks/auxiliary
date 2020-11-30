@@ -4,3 +4,5 @@ src/.DS_Store
 src/modelDesigns/__pycache__/**
 src/postprocess/__pycache__/**
 src/preprocess/__pycache__/**
+auxiliary_partition/__pycache__/**
+auxiliary_partition/.DS_Store
