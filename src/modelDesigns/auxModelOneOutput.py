@@ -1,4 +1,5 @@
 import keras
+import sys
 import glob
 import os
 import pickle
@@ -6,8 +7,7 @@ import pickle
 import pandas as pd 
 import numpy as np
 
-from utk_face_data_generator import UtkFaceDataGenerator
-
+from pathlib import Path
 from keras.models import Sequential, Model
 from keras.layers import Input, Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, MaxPooling2D
@@ -18,6 +18,10 @@ import matplotlib.pyplot as plt
 
 from keras.utils import to_categorical
 from PIL import Image
+
+sys.path.append(str(Path(__file__).parent.parent.parent.absolute()))
+
+from src.modelDesigns.utk_face_data_generator import UtkFaceDataGenerator
 
 class AuxModel:
     def structure(self,inputs):

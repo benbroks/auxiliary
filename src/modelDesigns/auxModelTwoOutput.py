@@ -1,4 +1,5 @@
 import pickle
+import sys
 
 import numpy as np
 
@@ -10,6 +11,12 @@ from keras.optimizers import RMSprop
 from keras.callbacks import EarlyStopping
 
 import matplotlib.pyplot as plt
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent.parent.absolute()))
+
+from src.modelDesigns.utk_face_data_generator import UtkFaceDataGenerator
+
 
 class AuxModelTwoOutputs:
     def structure(self,inputs):

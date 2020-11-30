@@ -27,7 +27,7 @@ class UtkFaceDataGenerator():
         a_buckets=age_buckets, 
     ):
         self.dataset_dict = dataset_dict
-        self.parse_dataset(dataset_path)
+        self.parse_dataset(dataset_path=dataset_path)
         self.IM_WIDTH = im_width
         self.IM_HEIGHT = im_height
         self.age_buckets = a_buckets
@@ -103,7 +103,7 @@ class UtkFaceDataGenerator():
         """
         Status as determined by age and ethnicity/race.
         """
-        return a*5 + e
+        return age*5 + ethnicity
     
     def convert_age_to_bucket(self,age):
         """

@@ -8,6 +8,7 @@ TEST_SPLIT = 1 - TRAIN_SPLIT - VALIDATION_SPLIT
 
 IM_WIDTH = 198
 IM_HEIGHT = 198
+age_buckets = [25,45,117]
 
 ### FILEPATHS ###
 data_dir = Path("data")
