@@ -140,9 +140,9 @@ class HierModelTools():
 
 def generate_hierarchical_results(
     base_model_fp_prefix = "base_epochs_",
-    aux_model_fp_prefix = "aux_one_compressed_epoch_",
-    cfm_fp =  "final_cfms_one_15.npy",
-    num_models = 16,
+    aux_model_fp_prefix = "aux_one_compressed_raw_15_cfm_epoch__",
+    cfm_fp =  "final_cfms_full_15.npy",
+    num_models = 20,    
 ):
     hrm = HierModelTools()
     train_idx, valid_idx, test_idx = hrm.generator.generate_split_indexes()

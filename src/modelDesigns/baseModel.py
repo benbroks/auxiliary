@@ -278,8 +278,9 @@ class BasePipeline:
     # Age will be worth 10
     # Ethnicity will be worth 2
     # Gender will be worth 1
-    # def convert_tuple_to_status(a,e,g): 
-    #    return a*10 + e*2 + g
+    def convert_triple_to_status(a,e,g): 
+        return a*10 + e*2 + g
+    
     def convert_tuple_to_status(self,a,e): # Just age and gender
         return a*5 + e
 
@@ -328,7 +329,7 @@ class BasePipeline:
             full_history.append(history)
             model.save(checkpoint_path)
     
-    def results_by_model(self, m, test_batch_size = 128):
+    def results_15_by_model(self, m, test_batch_size = 128):
         self.build_generator()
         test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
         age_pred, race_pred, gender_pred = m.predict_generator(test_generator, steps=len(self.valid_idx)//test_batch_size)
@@ -336,7 +337,6 @@ class BasePipeline:
         test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
 
         samples = 0
-        # images, age_true, race_true, gender_true = [], [], [], []
         images, age_true, race_true = [], [], []
         for test_batch in test_generator:
             image = test_batch[0]
@@ -344,14 +344,10 @@ class BasePipeline:
             images.extend(image)
             age_true.extend(labels[0])
             race_true.extend(labels[1])
-            # gender_true.extend(labels[2])
 
         age_true = np.array(age_true)
         race_true = np.array(race_true)
-        # gender_true = np.array(gender_true)
 
-        #race_true, gender_true = race_true.argmax(axis=-1), gender_true.argmax(axis=-1)
-        #race_pred, gender_pred = race_pred.argmax(axis=-1), gender_pred.argmax(axis=-1)
         race_true = race_true.argmax(axis=-1)
         race_pred = race_pred.argmax(axis=-1)
 
@@ -364,15 +360,13 @@ class BasePipeline:
         pred=[]
         true=[]
         for i in range(len(age_true)):
-            #pred_append = self.convert_tuple_to_status(age_pred[i],race_pred[i],gender_pred[i])
-            #true_append = self.convert_tuple_to_status(age_true[i],race_true[i],gender_true[i])
             pred_append = self.convert_tuple_to_status(age_pred[i],race_pred[i])
             true_append = self.convert_tuple_to_status(age_true[i],race_true[i])
             pred.append(pred_append)
             true.append(true_append)
         return pred, true
     
-    def build_cfms(
+    def build_15_cfms(
         self,
         epoch_batch = 5,
         epochs = 100,
@@ -383,9 +377,65 @@ class BasePipeline:
         for i in range(int(epochs/epoch_batch)):
             checkpoint = checkpoint_path + str((i+1)*epoch_batch)
             m = load_model(checkpoint)
-            pred, true = self.results_by_model(m)
-            # cfm = confusion_matrix(true, pred,labels=[i for i in range(30)])
+            pred, true = self.results_15_by_model(m)
             cfm = confusion_matrix(true, pred,labels=[i for i in range(15)])
+            print(cfm)
+            base_cfms.append(cfm)
+            print("{}% complete.".format((i+1)*epoch_batch))
+        np.save(save_cfms_path,base_cfms)
+    
+    def results_30_by_model(self, m, test_batch_size = 128):
+        self.build_generator()
+        test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
+        age_pred, race_pred, gender_pred = m.predict_generator(test_generator, steps=len(self.valid_idx)//test_batch_size)
+        
+        test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
+
+        samples = 0
+        images, age_true, race_true, gender_true = [], [], [], []
+        for test_batch in test_generator:
+            image = test_batch[0]
+            labels = test_batch[1]
+            images.extend(image)
+            age_true.extend(labels[0])
+            race_true.extend(labels[1])
+            gender_true.extend(labels[2])
+
+        age_true = np.array(age_true)
+        race_true = np.array(race_true)
+        gender_true = np.array(gender_true)
+
+        race_true, gender_true = race_true.argmax(axis=-1), gender_true.argmax(axis=-1)
+        race_pred, gender_pred = race_pred.argmax(axis=-1), gender_pred.argmax(axis=-1)
+
+        age_true = age_true * self.data_generator.max_age
+        age_pred = age_pred * self.data_generator.max_age
+
+        age_true = list(map(self.convert_age_to_bucket,age_true))
+        age_pred = list(map(self.convert_age_to_bucket,age_pred))
+
+        pred=[]
+        true=[]
+        for i in range(len(age_true)):
+            pred_append = self.convert_triple_to_status(age_pred[i],race_pred[i],gender_pred[i])
+            true_append = self.convert_triple_to_status(age_true[i],race_true[i],gender_true[i])
+            pred.append(pred_append)
+            true.append(true_append)
+        return pred, true
+
+    def build_30_cfms(
+        self,
+        epoch_batch = 5,
+        epochs = 100,
+        checkpoint_path="data/trainedModels/base_epochs_",
+        save_cfms_path="data/results/confusionMatrices/base_cfms_30.npy",
+    ):
+        base_cfms = []
+        for i in range(int(epochs/epoch_batch)):
+            checkpoint = checkpoint_path + str((i+1)*epoch_batch)
+            m = load_model(checkpoint)
+            pred, true = self.results_30_by_model(m)
+            cfm = confusion_matrix(true, pred,labels=[i for i in range(30)])
             print(cfm)
             base_cfms.append(cfm)
             print("{}% complete.".format((i+1)*epoch_batch))

@@ -87,7 +87,7 @@ class UtkFaceDataGeneratorAuxOneModel(UtkFaceDataGenerator):
         a,
         dataset_dict,
     ):
-        super().__init__(dataset_path, a, dataset_dict)
+        super().__init__(dataset_path, dataset_dict)
         self.a = a
     
     def generate_images(self, image_idx, is_training, batch_size=16):
@@ -165,9 +165,12 @@ class AuxOnePipeline:
         with open(partitions_path, "rb") as fp:   # Unpickling
             set_partitions = pickle.load(fp)
         # Training Auxiliary Models!
-        #for i in range(0,int(epochs/epoch_batch)):
-        for i in range(11):
-            data_generator_aux = UtkFaceDataGeneratorAux1Model(self.dataset_folder_name,set_partitions[i],self.dataset_dict)
+        for i in range(0,int(epochs/epoch_batch)):
+            data_generator_aux = UtkFaceDataGeneratorAuxOneModel(
+                sself.dataset_folder_name,
+                set_partitions[i],
+                self.dataset_dict,
+            )
             aux_train_idx, aux_valid_idx, aux_test_idx = data_generator_aux.generate_split_indexes()
 
             aux_train_gen = data_generator_aux.generate_images(aux_train_idx, is_training=True, batch_size=train_batch_size)
@@ -179,11 +182,12 @@ class AuxOnePipeline:
                             epochs=(i+1)*5,
                             validation_data=aux_valid_gen,
                             validation_steps=len(aux_valid_idx)//valid_batch_size)
+            
             aux_model.save(str(checkpoint_path)+"_"+str((i+1)*5))  
             y = history.history['val_loss'] 
             plt.plot([i for i in range(len(y))],history.history['val_loss'])
             plt.title("Auxiliary (One Output) Model Validation Loss - {} Epochs".format((i+1)*5))
-            plt.savefig(graphs_path / "aux_one_val_loss_{}".format((i+1)*5))
+            plt.savefig(graphs_path / "aux_one_compressed_raw_15_val_loss_{}".format((i+1)*5))
 
         
         

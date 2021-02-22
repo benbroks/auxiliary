@@ -79,6 +79,45 @@ def age_accuracy_by_race(cfm):
     weighted_variance = var_num / measurements
     return avg_acc, weighted_variance
 
+# Macro F1: Arithmetic Mean of Race-Specific F1 scores 
+# F1 Score: Harmonic Mean of Precision + Recall
+def macro_f1_score_by_race(cfm):
+    def f1_denominators(cfm,i):
+        n = len(cfm)
+        # Recall is sum over column
+        # Precision is sum over row
+        recall_denominator = 0
+        precision_denominator = 0
+        for j in range(n):
+            precision_denominator += cfm[i][j]
+            recall_denominator += cfm[j][i]
+        return recall_denominator, precision_denominator
+
+    def age_f1(cfm,i):
+        race_recall_denominator = 0
+        race_precision_denominator = 0
+        race_numerator = 0
+
+        for j in range(3):
+            race_numerator += cfm[i+5*j][i+5*j]
+            recall_denominator, precision_denominator = f1_denominators(cfm,i+5*j)
+            race_recall_denominator += recall_denominator
+            race_precision_denominator += precision_denominator
+        
+        recall = race_numerator / race_recall_denominator
+        precision = race_numerator / race_precision_denominator
+
+        if recall + precision == 0:
+            return 0
+
+        return 2 * (precision * recall)/(precision + recall)
+
+    NUM_RACES = 5
+    macro_f1_sum = 0
+    for i in range(NUM_RACES):
+        macro_f1_sum += age_f1(cfm,i)
+    return macro_f1_sum / NUM_RACES
+
 
 if __name__ == "__main__":
     # Evaluate Accuracy of Base Models (5-100)
@@ -87,6 +126,7 @@ if __name__ == "__main__":
     x = []
     a_r_var = []
     a_acc = []
+    macro_f1_vals = []
 
     for i in range(len(base_cfms)):
         cfm = base_cfms[i]
@@ -96,15 +136,21 @@ if __name__ == "__main__":
         to_gephi(r_cfm,cfm_dir / "{}_race.csv".format(i))
         x.append((i+1)*5)
         acc, var = age_accuracy_by_race(cfm)
+        macro_f1 = macro_f1_score_by_race(cfm)
         a_r_var.append(var)
         a_acc.append(acc)
+        macro_f1_vals.append(macro_f1)
     
     plt.scatter(x,a_r_var)
     plt.title("Original: Statistical Parity of Age Accuracy (by Race) - 5 Classes")
-    plt.savefig(graphs_dir / "a_r_acc.jpg")
+    plt.savefig(graphs_dir / "og_a_r_acc.jpg")
     plt.show()
     plt.scatter(x,a_acc)
     plt.title("Original: Age Accuracy - 3 Classes")
-    plt.savefig(graphs_dir / "a_acc.jpg")
+    plt.savefig(graphs_dir / "og_a_acc.jpg")
+    plt.show()
+    plt.scatter(x,macro_f1_vals)
+    plt.title("Original: Macro F1 (by Race) - 5 Classes")
+    plt.savefig(graphs_dir / "og_macro_f1_vals.jpg")
     plt.show()
 

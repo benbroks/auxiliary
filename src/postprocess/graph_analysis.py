@@ -89,7 +89,7 @@ class MaxCutImplementations:
                 b = set(candidate_b)
         return a,b
 
-## THERE ARE THREE GRAPH SETUP CHOICES ##
+## THERE ARE FOUR GRAPH SETUP CHOICES ##
 def single_cfm(base_cfms,num=20):
     set_partitions = []
     for i in range(num):
@@ -144,19 +144,35 @@ def race_cfms(base_cfms,num=20):
         set_partitions.append(a)
     return set_partitions
 
+def fully_connected_race_age_cfm(base_cfms,num=20):
+    set_partitions = []
+    for i in range(num):
+        # Full CFM
+        c = MaxCutImplementations(base_cfms[i])
+        a,b = c.approxMaxCut()
+        print("Partition Base Epoch {i}:".format(i=(i+1)*5), a, b)
+        set_partitions.append(a)
+    return set_partitions
+
 
 def graph_pipeline(base_cfms_path, partitions_path=None, status=0):
     base_cfms = np.load(base_cfms_path,allow_pickle=True)
     num_iter = 20
-    ## PICK YOUR GRAPH SETUP VIA status parameter ##
+    print(base_cfms[0])
+    ## PICK YOUR GRAPH SETUP VIA STATUS PARAMETER ##
     if status == 0:
         set_partitions = single_cfm(base_cfms,num_iter)
     elif status == 1:
         set_partitions = dual_cfm(base_cfms,num_iter)
-    else:
+    elif status == 2:
         set_partitions = race_cfms(base_cfms,num_iter)
-    if partitions_path is not None:
-        with open(partitions_path, "wb") as fp:   #Pickling
-            pickle.dump(set_partitions, fp)
+    elif status == 3:
+        set_partitions = fully_connected_race_age_cfm(base_cfms,num_iter)
+    else:
+        raise Exception("This status isn't valid.")
+
+    # if partitions_path is not None:
+    #     with open(partitions_path, "wb") as fp:   #Pickling
+    #         pickle.dump(set_partitions, fp)
 
     return set_partitions

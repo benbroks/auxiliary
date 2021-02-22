@@ -9,3 +9,18 @@ Core process:
 - Train an auxiliary binary classifier (smaller than base classifier by at least 10x params) on the new supervised dataset.
 - Generate a new supervised dataset with a new input structure (base classifier prediction concatenated with aux classifier prediction) and original, high dimensional output.
 - Train a simple, hierarchical model (logistic regression, naive bayes, etc.) on the novel dataset. Evaluate base classifier accuracy + fairness as compared to hierarchical model.
+
+
+# Model Labels #
+- Evaluating just race and age - max cut across 15-dimensional confusion matrix
+    - Auxiliary Model Epoch Checkpoint: `aux_one_compressed_raw_15_cfm_epoch_`
+    - Hierarchical Model CFM: `final_cfms_full_15.npy`
+    - Figure: `aux_one_compressed_raw_15_val_loss_`
+
+- Evaluating just race and age - max cut across race-connected portions of 15-dimensional confusion matrix
+    - Auxiliary Model Epoch Checkpoint: `aux_one_compressed_epoch_`
+    - Hierarchical Model CFM: `final_cfms_one_15.npy`
+
+- Evaluating race, age, gender
+    - Auxiliary Model Epoch Checkpoint: `aux_30_epoch_`
+    - Hierarchical Model CFM: `final_cfms_30.npy`

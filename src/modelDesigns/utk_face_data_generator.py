@@ -42,7 +42,8 @@ class UtkFaceDataGenerator():
             age, gender, race, _ = filename.split('_')
 
             return int(age), self.dataset_dict['gender_id'][int(gender)], self.dataset_dict['race_id'][int(race)]
-        except Exception as ex:
+        except Exception as e:
+            print("Exception Hit:", e)
             return None, None, None
     
     def parse_dataset(self, dataset_path, ext='jpg'):
@@ -123,6 +124,7 @@ class UtkFaceDataGenerator():
         images, ages, races, genders = [], [], [], []
         while True:
             for idx in image_idx:
+                print("Shape inside Image Generation:", self.df.shape)
                 person = self.df.iloc[idx]
                 
                 age = person['age']
