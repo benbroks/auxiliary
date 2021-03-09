@@ -97,6 +97,12 @@ class UtkFaceDataGenerator():
         im = np.array(im) / 255.0
         
         return im
+
+    def convert_triple_to_status(self,age,ethnicity,gender):
+        """
+        Status as determined by age, ethnicity, and gender.
+        """
+        return age*10 + ethnicity*2 + gender
     
     ## 3 Ages, 5 Ethnicites, 2 Genders ## -> 30 Possible Combinations
     # We restrict to age and ethnicity in this case.
@@ -105,6 +111,7 @@ class UtkFaceDataGenerator():
         Status as determined by age and ethnicity/race.
         """
         return age*5 + ethnicity
+
     
     def convert_age_to_bucket(self,age):
         """
@@ -124,7 +131,6 @@ class UtkFaceDataGenerator():
         images, ages, races, genders = [], [], [], []
         while True:
             for idx in image_idx:
-                print("Shape inside Image Generation:", self.df.shape)
                 person = self.df.iloc[idx]
                 
                 age = person['age']

@@ -1,6 +1,7 @@
 import numpy as np 
 import pandas as pd
 import os
+import sys
 import glob
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ from sklearn.metrics import confusion_matrix
 
 from keras.utils import to_categorical
 from PIL import Image
+from pathlib import Path
 
 from keras.models import Model, save_model, load_model
 from keras.layers.normalization import BatchNormalization
@@ -30,110 +32,114 @@ from keras.optimizers import Adam
 
 from keras.callbacks import ModelCheckpoint
 
-class UtkFaceDataGenerator():
-    """
-    Data generator for the UTKFace dataset. This class should be used when training our Keras multi-output model.
-    """
-    def __init__(self, 
-        dataset_path, 
-        dataset_dict, 
-        IM_WIDTH=198, 
-        IM_HEIGHT=198, 
-        TRAIN_TEST_SPLIT=0.7,
-    ):
-        self.dataset_dict = dataset_dict
-        self.parse_dataset(dataset_path)
-        self.TRAIN_TEST_SPLIT = 0.7
-        self.IM_WIDTH = IM_WIDTH
-        self.IM_HEIGHT = IM_HEIGHT
-    
-    def parse_info_from_file(self, path):
-        """
-        Parse information from a single file
-        """
-        try:
-            filename = os.path.split(path)[1]
-            filename = os.path.splitext(filename)[0]
-            age, gender, race, _ = filename.split('_')
+sys.path.append(str(Path(__file__).parent.parent.parent.absolute()))
 
-            return int(age), self.dataset_dict['gender_id'][int(gender)], self.dataset_dict['race_id'][int(race)]
-        except Exception as ex:
-            return None, None, None
+from src.modelDesigns.utk_face_data_generator import UtkFaceDataGenerator
+
+# class UtkFaceDataGenerator():
+#     """
+#     Data generator for the UTKFace dataset. This class should be used when training our Keras multi-output model.
+#     """
+#     def __init__(self, 
+#         dataset_path, 
+#         dataset_dict, 
+#         IM_WIDTH=198, 
+#         IM_HEIGHT=198, 
+#         TRAIN_TEST_SPLIT=0.7,
+#     ):
+#         self.dataset_dict = dataset_dict
+#         self.parse_dataset(dataset_path)
+#         self.TRAIN_TEST_SPLIT = 0.7
+#         self.IM_WIDTH = IM_WIDTH
+#         self.IM_HEIGHT = IM_HEIGHT
     
-    def parse_dataset(self, dataset_path, ext='jpg'):
-        """
-        Used to extract information about our dataset. It does iterate over all images and return a DataFrame with
-        the data (age, gender and sex) of all files.
-        """
-        files = glob.glob(os.path.join(dataset_path, "*.%s" % ext))
+#     def parse_info_from_file(self, path):
+#         """
+#         Parse information from a single file
+#         """
+#         try:
+#             filename = os.path.split(path)[1]
+#             filename = os.path.splitext(filename)[0]
+#             age, gender, race, _ = filename.split('_')
+
+#             return int(age), self.dataset_dict['gender_id'][int(gender)], self.dataset_dict['race_id'][int(race)]
+#         except Exception as ex:
+#             return None, None, None
+    
+#     def parse_dataset(self, dataset_path, ext='jpg'):
+#         """
+#         Used to extract information about our dataset. It does iterate over all images and return a DataFrame with
+#         the data (age, gender and sex) of all files.
+#         """
+#         files = glob.glob(os.path.join(dataset_path, "*.%s" % ext))
         
-        records = []
-        for f in files:
-            info = self.parse_info_from_file(f)
-            records.append(info)
+#         records = []
+#         for f in files:
+#             info = self.parse_info_from_file(f)
+#             records.append(info)
             
-        self.df = pd.DataFrame(records)
-        self.df['file'] = files
-        self.df.columns = ['age', 'gender', 'race', 'file']
-        self.df = self.df.dropna()
+#         self.df = pd.DataFrame(records)
+#         self.df['file'] = files
+#         self.df.columns = ['age', 'gender', 'race', 'file']
+#         self.df = self.df.dropna()
         
-    def generate_split_indexes(self):
-        p = np.random.permutation(len(self.df))
-        train_up_to = int(len(self.df) * self.TRAIN_TEST_SPLIT)
-        train_idx = p[:train_up_to]
-        test_idx = p[train_up_to:]
+#     def generate_split_indexes(self):
+#         p = np.random.permutation(len(self.df))
+#         train_up_to = int(len(self.df) * self.TRAIN_TEST_SPLIT)
+#         train_idx = p[:train_up_to]
+#         test_idx = p[train_up_to:]
 
-        train_up_to = int(train_up_to * self.TRAIN_TEST_SPLIT)
-        train_idx, valid_idx = train_idx[:train_up_to], train_idx[train_up_to:]
+#         train_up_to = int(train_up_to * self.TRAIN_TEST_SPLIT)
+#         train_idx, valid_idx = train_idx[:train_up_to], train_idx[train_up_to:]
         
-        # converts alias to id
-        self.df['gender_id'] = self.df['gender'].map(lambda gender: self.dataset_dict['gender_alias'][gender])
-        self.df['race_id'] = self.df['race'].map(lambda race: self.dataset_dict['race_alias'][race])
+#         # converts alias to id
+#         self.df['gender_id'] = self.df['gender'].map(lambda gender: self.dataset_dict['gender_alias'][gender])
+#         self.df['race_id'] = self.df['race'].map(lambda race: self.dataset_dict['race_alias'][race])
 
-        self.max_age = self.df['age'].max()
+#         self.max_age = self.df['age'].max()
         
-        return train_idx, valid_idx, test_idx
+#         return train_idx, valid_idx, test_idx
     
-    def preprocess_image(self, img_path):
-        """
-        Used to perform some minor preprocessing on the image before inputting into the network.
-        """
-        im = Image.open(img_path)
-        im = im.resize((self.IM_WIDTH, self.IM_HEIGHT))
-        im = np.array(im) / 255.0
+#     def preprocess_image(self, img_path):
+#         """
+#         Used to perform some minor preprocessing on the image before inputting into the network.
+#         """
+#         im = Image.open(img_path)
+#         im = im.resize((self.IM_WIDTH, self.IM_HEIGHT))
+#         im = np.array(im) / 255.0
         
-        return im
+#         return im
         
-    def generate_images(self, image_idx, is_training, batch_size=16):
-        """
-        Used to generate a batch with images when training/testing/validating our Keras model.
-        """
+#     def generate_images(self, image_idx, is_training, batch_size=16):
+#         """
+#         Used to generate a batch with images when training/testing/validating our Keras model.
+#         """
         
-        # arrays to store our batched data
-        images, ages, races, genders = [], [], [], []
-        while True:
-            for idx in image_idx:
-                person = self.df.iloc[idx]
+#         # arrays to store our batched data
+#         images, ages, races, genders = [], [], [], []
+#         while True:
+#             for idx in image_idx:
+#                 person = self.df.iloc[idx]
                 
-                age = person['age']
-                race = person['race_id']
-                gender = person['gender_id']
-                file = person['file']
+#                 age = person['age']
+#                 race = person['race_id']
+#                 gender = person['gender_id']
+#                 file = person['file']
                 
-                im = self.preprocess_image(file)
+#                 im = self.preprocess_image(file)
                 
-                ages.append(age / self.max_age)
-                races.append(to_categorical(race, len(self.dataset_dict['race_id'])))
-                genders.append(to_categorical(gender, len(self.dataset_dict['gender_id'])))
-                images.append(im)
+#                 ages.append(age / self.max_age)
+#                 races.append(to_categorical(race, len(self.dataset_dict['race_id'])))
+#                 genders.append(to_categorical(gender, len(self.dataset_dict['gender_id'])))
+#                 images.append(im)
                 
-                # yielding condition
-                if len(images) >= batch_size:
-                    yield np.array(images), [np.array(ages), np.array(races), np.array(genders)]
-                    images, ages, races, genders = [], [], [], []
+#                 # yielding condition
+#                 if len(images) >= batch_size:
+#                     yield np.array(images), [np.array(ages), np.array(races), np.array(genders)]
+#                     images, ages, races, genders = [], [], [], []
                     
-            if not is_training:
-                break
+#             if not is_training:
+#                 break
 
 class UtkMultiOutputModel():
     """
@@ -278,7 +284,7 @@ class BasePipeline:
     # Age will be worth 10
     # Ethnicity will be worth 2
     # Gender will be worth 1
-    def convert_triple_to_status(a,e,g): 
+    def convert_triple_to_status(self,a,e,g): 
         return a*10 + e*2 + g
     
     def convert_tuple_to_status(self,a,e): # Just age and gender
@@ -332,7 +338,7 @@ class BasePipeline:
     def results_15_by_model(self, m, test_batch_size = 128):
         self.build_generator()
         test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
-        age_pred, race_pred, gender_pred = m.predict_generator(test_generator, steps=len(self.valid_idx)//test_batch_size)
+        age_pred, race_pred, gender_pred = m.predict(test_generator, steps=len(self.valid_idx)//test_batch_size)
         
         test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
 
@@ -379,7 +385,6 @@ class BasePipeline:
             m = load_model(checkpoint)
             pred, true = self.results_15_by_model(m)
             cfm = confusion_matrix(true, pred,labels=[i for i in range(15)])
-            print(cfm)
             base_cfms.append(cfm)
             print("{}% complete.".format((i+1)*epoch_batch))
         np.save(save_cfms_path,base_cfms)
@@ -387,7 +392,7 @@ class BasePipeline:
     def results_30_by_model(self, m, test_batch_size = 128):
         self.build_generator()
         test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
-        age_pred, race_pred, gender_pred = m.predict_generator(test_generator, steps=len(self.valid_idx)//test_batch_size)
+        age_pred, race_pred, gender_pred = m.predict(test_generator, steps=len(self.valid_idx)//test_batch_size)
         
         test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
 
@@ -436,7 +441,6 @@ class BasePipeline:
             m = load_model(checkpoint)
             pred, true = self.results_30_by_model(m)
             cfm = confusion_matrix(true, pred,labels=[i for i in range(30)])
-            print(cfm)
             base_cfms.append(cfm)
             print("{}% complete.".format((i+1)*epoch_batch))
         np.save(save_cfms_path,base_cfms)

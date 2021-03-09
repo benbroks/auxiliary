@@ -14,17 +14,17 @@ from src.modelDesigns.hierModel import generate_hierarchical_results
 from auxiliary_partition.config import cfm_dir, partitions_dir, model_dir,raw_dir, graphs_dir
 
 if __name__ == "__main__":
-    bm = BasePipeline()
-    bm.build_30_cfms()
+    # bm = BasePipeline(dataset_folder_name=raw_dir)
+    # bm.build_30_cfms()
     # set_partitions = graph_pipeline(
-    #     base_cfms_path= cfm_dir / "base_cfms.npy", 
-    #     partitions_path= partitions_dir / "race_partitions.txt", 
-    #     status= 3,
+    #     base_cfms_path= cfm_dir / "base_cfms_30.npy", 
+    #     partitions_path= partitions_dir / "30_partitions.txt", 
+    #     status= 0,
     # )
-    # ap = AuxOnePipeline(dataset_folder_name=raw_dir)
+    # ap = AuxOnePipeline(dataset_folder_name=raw_dir, num_classes = 30)
     # ap.train_models(
-    #     checkpoint_path = model_dir / "aux_one_compressed_raw_15_cfm_epoch_",
-    #     partitions_path=partitions_dir / "race_partitions.txt", 
+    #     checkpoint_path = model_dir / "aux_30_epoch_",
+    #     partitions_path=partitions_dir / "30_partitions.txt", 
     #     graphs_path = graphs_dir,
     # )
-    # generate_hierarchical_results()
+    generate_hierarchical_results()

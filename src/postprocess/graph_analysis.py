@@ -171,8 +171,8 @@ def graph_pipeline(base_cfms_path, partitions_path=None, status=0):
     else:
         raise Exception("This status isn't valid.")
 
-    # if partitions_path is not None:
-    #     with open(partitions_path, "wb") as fp:   #Pickling
-    #         pickle.dump(set_partitions, fp)
+    if partitions_path is not None:
+        with open(partitions_path, "wb") as fp:   #Pickling
+            pickle.dump(set_partitions, fp)
 
     return set_partitions

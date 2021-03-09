@@ -14,6 +14,8 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.optimizers import RMSprop
 
+from keras.callbacks import EarlyStopping
+
 import matplotlib.pyplot as plt
 
 from keras.utils import to_categorical
@@ -86,9 +88,11 @@ class UtkFaceDataGeneratorAuxOneModel(UtkFaceDataGenerator):
         dataset_path, 
         a,
         dataset_dict,
+        num_classes,
     ):
         super().__init__(dataset_path, dataset_dict)
         self.a = a
+        self.num_classes=num_classes
     
     def generate_images(self, image_idx, is_training, batch_size=16):
         """
@@ -103,7 +107,12 @@ class UtkFaceDataGeneratorAuxOneModel(UtkFaceDataGenerator):
                 
                 age = self.convert_age_to_bucket(person['age'])
                 race = to_categorical(person['race_id'],len(self.dataset_dict['race_id'])).argmax(axis=-1)
-                s = self.convert_tuple_to_status(age,race)
+                if self.num_classes == 30:
+                    gender = to_categorical(person['gender_id'],len(self.dataset_dict['gender_id'])).argmax(axis=-1)
+                    s = self.convert_triple_to_status(age,race,gender)
+                else:
+                    s = self.convert_tuple_to_status(age,race)
+                
                 if s in self.a:
                     s = 0
                 else:
@@ -125,6 +134,7 @@ class UtkFaceDataGeneratorAuxOneModel(UtkFaceDataGenerator):
 class AuxOnePipeline:
     def __init__(
         self,
+        num_classes=30,
         dataset_folder_name = 'UTKFace',
         TRAIN_TEST_SPLIT = 0.7,
         IM_WIDTH = 198,
@@ -145,6 +155,7 @@ class AuxOnePipeline:
             self.dataset_dict["gender_id"][i] = tag
         self.dataset_dict['gender_alias'] = dict((g, i) for i, g in self.dataset_dict['gender_id'].items())
         self.dataset_dict['race_alias'] = dict((g, i) for i, g in self.dataset_dict['race_id'].items())
+        self.num_classes = num_classes
     
     def build_model(self):
         aux_model = AuxModel()
@@ -160,16 +171,17 @@ class AuxOnePipeline:
         valid_batch_size = 32,
         epoch_batch = 5,
         epochs = 100,
-        checkpoint_path="checkpoint/aux_compressed_epochs_", # This version only looks at race + age (not gender)
+        checkpoint_path="checkpoint/aux_30_epoch_", # This version only looks at race + age (not gender)
     ):
         with open(partitions_path, "rb") as fp:   # Unpickling
             set_partitions = pickle.load(fp)
         # Training Auxiliary Models!
         for i in range(0,int(epochs/epoch_batch)):
             data_generator_aux = UtkFaceDataGeneratorAuxOneModel(
-                sself.dataset_folder_name,
+                self.dataset_folder_name,
                 set_partitions[i],
                 self.dataset_dict,
+                num_classes=self.num_classes
             )
             aux_train_idx, aux_valid_idx, aux_test_idx = data_generator_aux.generate_split_indexes()
 
@@ -177,17 +189,20 @@ class AuxOnePipeline:
             aux_valid_gen = data_generator_aux.generate_images(aux_valid_idx, is_training=True, batch_size=valid_batch_size)
 
             aux_model = self.build_model()
+            es = EarlyStopping(monitor='val_loss',mode='min',patience=10)
             history = aux_model.fit(aux_train_gen,
                             steps_per_epoch=len(aux_train_idx)//train_batch_size,
                             epochs=(i+1)*5,
                             validation_data=aux_valid_gen,
-                            validation_steps=len(aux_valid_idx)//valid_batch_size)
+                            validation_steps=len(aux_valid_idx)//valid_batch_size,
+                            callbacks=[es]
+            )
             
             aux_model.save(str(checkpoint_path)+"_"+str((i+1)*5))  
             y = history.history['val_loss'] 
             plt.plot([i for i in range(len(y))],history.history['val_loss'])
-            plt.title("Auxiliary (One Output) Model Validation Loss - {} Epochs".format((i+1)*5))
-            plt.savefig(graphs_path / "aux_one_compressed_raw_15_val_loss_{}".format((i+1)*5))
+            plt.title("Auxiliary Model Validation Loss - {} Epochs".format((i+1)*5))
+            plt.savefig(graphs_path / "aux_30_epoch_val_loss_{}".format((i+1)*5))
 
         
         

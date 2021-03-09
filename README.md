@@ -24,3 +24,5 @@ Core process:
 - Evaluating race, age, gender
     - Auxiliary Model Epoch Checkpoint: `aux_30_epoch_`
     - Hierarchical Model CFM: `final_cfms_30.npy`
+    - Figure: `aux_30_epoch_val_loss_`
+    - Partitions: `30_partitions.txt`
