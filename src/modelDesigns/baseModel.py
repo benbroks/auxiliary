@@ -304,7 +304,7 @@ class BasePipeline:
         valid_batch_size = 15,
         epoch_batch = 5,
         epochs = 100,
-        checkpoint_path="checkpoint/base_epochs_"
+        checkpoint_dir="checkpoint/base_epochs_"
     ):
         opt = Adam(lr=init_lr, decay=init_lr / epochs)
         self.model.compile(optimizer=opt, 
@@ -321,19 +321,20 @@ class BasePipeline:
                   'race_output': 'accuracy',
                   'gender_output': 'accuracy'})
 
-        for i in range(int(epochs/epoch_batch)):
-            current_checkpoint = checkpoint_path + (i+1)*epoch_batch
+
+        for i in range(20,int(epochs/epoch_batch)):
+            current_checkpoint = checkpoint_dir / "base_epochs_{}".format(str((i+1)*epoch_batch))
             if i != 0:
-                model = load_model(checkpoint_path + str((i)*epochs))
-            train_gen = data_generator.generate_images(self.train_idx, is_training=True, batch_size=train_batch_size)
-            valid_gen = data_generator.generate_images(self.valid_idx, is_training=True, batch_size=valid_batch_size)
-            history = model.fit_generator(train_gen,
+                self.model = load_model(checkpoint_dir / "base_epochs_{}".format(str((i)*epoch_batch)))
+            train_gen = self.data_generator.generate_images(self.train_idx, is_training=True, batch_size=train_batch_size)
+            valid_gen = self.data_generator.generate_images(self.valid_idx, is_training=True, batch_size=valid_batch_size)
+            history = self.model.fit_generator(train_gen,
                     steps_per_epoch=len(self.train_idx)//train_batch_size,
-                    epochs=self.epoch_batch,
+                    epochs=epoch_batch,
                     validation_data=valid_gen,
                     validation_steps=len(self.valid_idx)//valid_batch_size)
-            full_history.append(history)
-            model.save(checkpoint_path)
+            # full_history.append(history)
+            self.model.save(current_checkpoint)
     
     def results_15_by_model(self, m, test_batch_size = 128):
         self.build_generator()

@@ -13,9 +13,9 @@ from src.modelDesigns.hierModel import generate_hierarchical_results
 
 from auxiliary_partition.config import cfm_dir, partitions_dir, model_dir,raw_dir, graphs_dir
 
-if __name__ == "__main__":
-    # bm = BasePipeline(dataset_folder_name=raw_dir)
-    # bm.build_30_cfms()
+def train_hier():
+    bm = BasePipeline(dataset_folder_name=raw_dir)
+    bm.build_30_cfms()
     # set_partitions = graph_pipeline(
     #     base_cfms_path= cfm_dir / "base_cfms_30.npy", 
     #     partitions_path= partitions_dir / "30_partitions.txt", 
@@ -27,4 +27,14 @@ if __name__ == "__main__":
     #     partitions_path=partitions_dir / "30_partitions.txt", 
     #     graphs_path = graphs_dir,
     # )
-    generate_hierarchical_results()
+    # generate_hierarchical_results()
+
+def train_base():
+    bp =BasePipeline(dataset_folder_name=raw_dir)
+    bp.build_generator()
+    bp.build_model()
+    bp.train_model(epochs=110,checkpoint_dir=model_dir)
+    bp.build_30_cfms(epochs=110)
+
+if __name__ == "__main__":
+    train_base()
