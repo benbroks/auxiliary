@@ -1,4 +1,5 @@
 import keras
+import time
 import glob
 import os
 import pickle
@@ -27,10 +28,13 @@ class UtkFaceDataGenerator():
         a_buckets=age_buckets, 
     ):
         self.dataset_dict = dataset_dict
-        self.parse_dataset(dataset_path=dataset_path)
         self.IM_WIDTH = im_width
         self.IM_HEIGHT = im_height
         self.age_buckets = a_buckets
+        tic = time.perf_counter()
+        self.parse_dataset(dataset_path=dataset_path)
+        toc = time.perf_counter()
+        print("Images pre-processed in {} seconds.".format(toc-tic))
     
     def parse_info_from_file(self, path):
         """
@@ -74,6 +78,7 @@ class UtkFaceDataGenerator():
         self.df['file'] = train_files + val_files + test_files
         self.df.columns = ['age', 'gender', 'race', 'file']
         self.df = self.df.dropna()
+        self.df['file'] = self.df['file'].apply(self.preprocess_image)
         
     def generate_split_indexes(self):
         train_idx = [i for i in range(self.train_len)]
@@ -121,34 +126,41 @@ class UtkFaceDataGenerator():
             if age <= a:
                 return i
         return len(self.age_buckets)-1
+    
+    def pre_generate_images(self, image_idx, batch_size=16):
+        images_collection = []
+        status_collection = []
+
+        batch_images = []
+        batch_age, batch_races, batch_genders = [], [], []
+
+        for idx in image_idx:
+            person = self.df.iloc[idx]
+                
+            age = person['age']
+            race = person['race_id']
+            gender = person['gender_id']
+            
+            batch_age.append(age / self.max_age)
+            batch_races.append(to_categorical(race, len(self.dataset_dict['race_id'])))
+            batch_genders.append(to_categorical(gender, len(self.dataset_dict['gender_id'])))
+            batch_images.append(person['file'])
+            
+            # yielding condition
+            if len(batch_images) >= batch_size:
+                images_collection.append(np.array(batch_images))
+                status_collection.append([np.array(batch_age), np.array(batch_races), np.array(batch_genders)])
+                batch_images, batch_age, batch_races, batch_genders = [], [], [], []
+        return images_collection, status_collection
         
-    def generate_images(self, image_idx, is_training, batch_size=16):
+    def generate_images(self, is_training, images_collection, status_collection):
         """
         Used to generate a batch with images when training/testing/validating our Keras model.
         """
         
-        # arrays to store our batched data
-        images, ages, races, genders = [], [], [], []
+        i = 0
         while True:
-            for idx in image_idx:
-                person = self.df.iloc[idx]
-                
-                age = person['age']
-                race = person['race_id']
-                gender = person['gender_id']
-                file = person['file']
-                
-                im = self.preprocess_image(file)
-                
-                ages.append(age / self.max_age)
-                races.append(to_categorical(race, len(self.dataset_dict['race_id'])))
-                genders.append(to_categorical(gender, len(self.dataset_dict['gender_id'])))
-                images.append(im)
-                
-                # yielding condition
-                if len(images) >= batch_size:
-                    yield np.array(images), [np.array(ages), np.array(races), np.array(genders)]
-                    images, ages, races, genders = [], [], [], []
-                    
             if not is_training:
                 break
+            yield images_collection[i], status_collection[i]
+            i += 1

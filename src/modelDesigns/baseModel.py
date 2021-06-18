@@ -322,18 +322,18 @@ class BasePipeline:
                   'gender_output': 'accuracy'})
 
         for i in range(int(epochs/epoch_batch)):
-            current_checkpoint = checkpoint_path + (i+1)*epoch_batch
+            current_checkpoint = str(checkpoint_path) +  str((i+1)*epoch_batch)
             if i != 0:
-                model = load_model(checkpoint_path + str((i)*epochs))
-            train_gen = data_generator.generate_images(self.train_idx, is_training=True, batch_size=train_batch_size)
-            valid_gen = data_generator.generate_images(self.valid_idx, is_training=True, batch_size=valid_batch_size)
-            history = model.fit_generator(train_gen,
+                self.model = load_model(str(checkpoint_path) +  str((i)*epoch_batch))
+            train_gen = self.data_generator.generate_images(self.train_idx, is_training=True, batch_size=train_batch_size)
+            valid_gen = self.data_generator.generate_images(self.valid_idx, is_training=True, batch_size=valid_batch_size)
+            history = self.model.fit(train_gen,
                     steps_per_epoch=len(self.train_idx)//train_batch_size,
-                    epochs=self.epoch_batch,
+                    epochs=epoch_batch,
                     validation_data=valid_gen,
                     validation_steps=len(self.valid_idx)//valid_batch_size)
-            full_history.append(history)
-            model.save(checkpoint_path)
+            # full_history.append(history)
+            self.model.save(current_checkpoint)
     
     def results_15_by_model(self, m, test_batch_size = 128):
         self.build_generator()
@@ -389,8 +389,11 @@ class BasePipeline:
             print("{}% complete.".format((i+1)*epoch_batch))
         np.save(save_cfms_path,base_cfms)
     
-    def results_30_by_model(self, m, test_batch_size = 128):
-        self.build_generator()
+    def results_30_by_model(
+        self, 
+        m, 
+        test_batch_size = 128
+    ):
         test_generator = self.data_generator.generate_images(self.valid_idx, is_training=False, batch_size=test_batch_size)
         age_pred, race_pred, gender_pred = m.predict(test_generator, steps=len(self.valid_idx)//test_batch_size)
         
@@ -436,13 +439,18 @@ class BasePipeline:
         save_cfms_path="data/results/confusionMatrices/base_cfms_30.npy",
     ):
         base_cfms = []
-        for i in range(int(epochs/epoch_batch)):
+        beginning = 14
+        if beginning != 0:
+            base_cfms = list(np.load(save_cfms_path,allow_pickle=True))
+        self.build_generator()
+        for i in range(beginning,int(epochs/epoch_batch)):
             checkpoint = checkpoint_path + str((i+1)*epoch_batch)
             m = load_model(checkpoint)
             pred, true = self.results_30_by_model(m)
             cfm = confusion_matrix(true, pred,labels=[i for i in range(30)])
             base_cfms.append(cfm)
             print("{}% complete.".format((i+1)*epoch_batch))
-        np.save(save_cfms_path,base_cfms)
+            print(i)
+            np.save(save_cfms_path,base_cfms)
     
         

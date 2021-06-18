@@ -6,3 +6,4 @@ src/postprocess/__pycache__/**
 src/preprocess/__pycache__/**
 auxiliary_partition/__pycache__/**
 auxiliary_partition/.DS_Store
+.vscode/**

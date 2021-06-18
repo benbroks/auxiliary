@@ -115,11 +115,9 @@ class UtkFaceDataGeneratorAuxTwoModel(UtkFaceDataGenerator):
                     partitions.append(0)
                 else:
                     partitions.append(1)
-                file = person['file']
                 
-                im = self.preprocess_image(file)
                 status.append(partitions)
-                images.append(im)
+                images.append(person['file'])
                 
                 # yielding condition
                 if len(images) >= batch_size:

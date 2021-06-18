@@ -3,6 +3,7 @@ import sys
 import glob
 import os
 import pickle
+import math
 
 import pandas as pd 
 import numpy as np
@@ -94,42 +95,52 @@ class UtkFaceDataGeneratorAuxOneModel(UtkFaceDataGenerator):
         self.a = a
         self.num_classes=num_classes
     
-    def generate_images(self, image_idx, is_training, batch_size=16):
+    def pre_generate_images(self, image_idx, batch_size=16):        
+        images_collection = []
+        status_collection = []
+
+        batch_images = []
+        batch_status = []
+
+        for idx in image_idx:
+            person = self.df.iloc[idx]
+            
+            age = self.convert_age_to_bucket(person['age'])
+            race = to_categorical(person['race_id'],len(self.dataset_dict['race_id'])).argmax(axis=-1)
+            if self.num_classes == 30:
+                gender = to_categorical(person['gender_id'],len(self.dataset_dict['gender_id'])).argmax(axis=-1)
+                s = self.convert_triple_to_status(age,race,gender)
+            else:
+                s = self.convert_tuple_to_status(age,race)
+            
+            if s in self.a:
+                s = 0
+            else:
+                s = 1
+            
+            batch_status.append(s)
+            batch_images.append(person['file'])
+            
+            # yielding condition
+            if len(batch_images) >= batch_size:
+                images_collection.append(np.array(batch_images))
+                status_collection.append(np.array(batch_status))
+                batch_images, batch_status = [], []
+        return images_collection, status_collection
+            
+    def generate_images(self, is_training, images_collection, status_collection):
         """
         Overriding generate images from base class. Only returning status as output rather than age/race/gender.
         """
-        
-        # arrays to store our batched data
-        images, status = [], []
+        i = 0
         while True:
-            for idx in image_idx:
-                person = self.df.iloc[idx]
-                
-                age = self.convert_age_to_bucket(person['age'])
-                race = to_categorical(person['race_id'],len(self.dataset_dict['race_id'])).argmax(axis=-1)
-                if self.num_classes == 30:
-                    gender = to_categorical(person['gender_id'],len(self.dataset_dict['gender_id'])).argmax(axis=-1)
-                    s = self.convert_triple_to_status(age,race,gender)
-                else:
-                    s = self.convert_tuple_to_status(age,race)
-                
-                if s in self.a:
-                    s = 0
-                else:
-                    s = 1
-                file = person['file']
-                
-                im = self.preprocess_image(file)
-                status.append(s)
-                images.append(im)
-                
-                # yielding condition
-                if len(images) >= batch_size:
-                    yield np.array(images), np.array(status)
-                    images, status = [], []
-                    
-            if not is_training:
-                break
+            try:
+                if not is_training:
+                    break
+                yield images_collection[i], status_collection[i]
+                i += 1
+            except:
+                print("Current ~attempted~ batch number:", i)
 
 class AuxOnePipeline:
     def __init__(
@@ -183,19 +194,39 @@ class AuxOnePipeline:
                 self.dataset_dict,
                 num_classes=self.num_classes
             )
-            aux_train_idx, aux_valid_idx, aux_test_idx = data_generator_aux.generate_split_indexes()
+            aux_train_idx, aux_valid_idx, _ = data_generator_aux.generate_split_indexes()
+            print("Number of train batches we have:", len(aux_train_idx)//train_batch_size)
 
-            aux_train_gen = data_generator_aux.generate_images(aux_train_idx, is_training=True, batch_size=train_batch_size)
-            aux_valid_gen = data_generator_aux.generate_images(aux_valid_idx, is_training=True, batch_size=valid_batch_size)
+            train_images_collection, train_status_collection = data_generator_aux.pre_generate_images(
+                aux_train_idx, 
+                batch_size=train_batch_size
+            )
+
+            print("Number of valid batches we have:", len(aux_valid_idx)//valid_batch_size)
+            valid_images_collection, valid_status_collection = data_generator_aux.pre_generate_images(
+                aux_valid_idx,  
+                batch_size=valid_batch_size
+            )
+            aux_train_gen = data_generator_aux.generate_images(
+                is_training=True, 
+                images_collection=train_images_collection, 
+                status_collection=train_status_collection
+            )
+            aux_valid_gen = data_generator_aux.generate_images(
+                is_training=True, 
+                images_collection=valid_images_collection, 
+                status_collection=valid_status_collection
+            )
 
             aux_model = self.build_model()
+            print(aux_model.summary())
             es = EarlyStopping(monitor='val_loss',mode='min',patience=10)
             history = aux_model.fit(aux_train_gen,
-                            steps_per_epoch=len(aux_train_idx)//train_batch_size,
-                            epochs=(i+1)*5,
-                            validation_data=aux_valid_gen,
-                            validation_steps=len(aux_valid_idx)//valid_batch_size,
-                            callbacks=[es]
+                    steps_per_epoch=len(aux_train_idx)//train_batch_size,
+                    epochs=(i+1)*5,
+                    validation_data=aux_valid_gen,
+                    validation_steps=len(aux_valid_idx)//valid_batch_size,
+                    callbacks=[es]
             )
             
             aux_model.save(str(checkpoint_path)+"_"+str((i+1)*5))  
