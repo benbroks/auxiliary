@@ -13,20 +13,23 @@ from src.modelDesigns.hierModel import generate_hierarchical_results
 
 from auxiliary_partition.config import cfm_dir, partitions_dir, model_dir,raw_dir, graphs_dir
 
-if __name__ == "__main__":
+def train_base():
     # 3,191,400 Trainable Params
-    # bm = BasePipeline(dataset_folder_name=raw_dir)
-    # bm.build_generator()
-    # bm.build_model()
-    # bm.train_model(
-    #     checkpoint_path = model_dir / "base_epochs_",
-    # )
-    # bm.build_30_cfms()
-    # set_partitions = graph_pipeline(
-    #     base_cfms_path= cfm_dir / "base_cfms_30.npy", 
-    #     partitions_path= partitions_dir / "30_partitions.txt", 
-    #     status= 0,
-    # )
+    bp =BasePipeline(dataset_folder_name=raw_dir)
+    bp.build_generator()
+    bp.build_model()
+    bp.train_model(
+        epochs=110,
+        checkpoint_dir=model_dir / "base_epochs_"
+    )
+    bp.build_30_cfms(epochs=110)
+
+def train_hier():
+    set_partitions = graph_pipeline(
+        base_cfms_path= cfm_dir / "base_cfms_30.npy", 
+        partitions_path= partitions_dir / "30_partitions.txt", 
+        status= 0,
+    )
     # 286,465 Trainable Params
     ap = AuxOnePipeline(dataset_folder_name=raw_dir, num_classes = 30)
     ap.train_models(
@@ -35,3 +38,7 @@ if __name__ == "__main__":
         graphs_path = graphs_dir,
     )
     generate_hierarchical_results()
+
+if __name__ == '__main__':
+    pass
+

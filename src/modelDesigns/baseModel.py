@@ -304,7 +304,7 @@ class BasePipeline:
         valid_batch_size = 15,
         epoch_batch = 5,
         epochs = 100,
-        checkpoint_path="checkpoint/base_epochs_"
+        checkpoint_dir="checkpoint/base_epochs_"
     ):
         opt = Adam(lr=init_lr, decay=init_lr / epochs)
         self.model.compile(optimizer=opt, 
@@ -322,12 +322,12 @@ class BasePipeline:
                   'gender_output': 'accuracy'})
 
         for i in range(int(epochs/epoch_batch)):
-            current_checkpoint = str(checkpoint_path) +  str((i+1)*epoch_batch)
+            current_checkpoint = checkpoint_dir / "base_epochs_{}".format(str((i+1)*epoch_batch))
             if i != 0:
-                self.model = load_model(str(checkpoint_path) +  str((i)*epoch_batch))
+                self.model = load_model(checkpoint_dir / "base_epochs_{}".format(str((i)*epoch_batch)))
             train_gen = self.data_generator.generate_images(self.train_idx, is_training=True, batch_size=train_batch_size)
             valid_gen = self.data_generator.generate_images(self.valid_idx, is_training=True, batch_size=valid_batch_size)
-            history = self.model.fit(train_gen,
+            history = self.model.fit_generator(train_gen,
                     steps_per_epoch=len(self.train_idx)//train_batch_size,
                     epochs=epoch_batch,
                     validation_data=valid_gen,

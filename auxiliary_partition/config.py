@@ -10,6 +10,9 @@ IM_WIDTH = 198
 IM_HEIGHT = 198
 age_buckets = [25,45,117]
 
+BASE_EPOCH_SECS = 301
+AUX_EPOCH_SECS = 197
+
 ### FILEPATHS ###
 data_dir = Path("data")
 

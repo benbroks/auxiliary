@@ -53,7 +53,7 @@ class AuxModel:
         x = Dropout(0.25)(x)
 
         x = Flatten()(x)
-        x = Dense(128)(x)
+        x = Dense(64)(x)
         x = Activation("relu")(x)
         x = BatchNormalization()(x)
         x = Dropout(0.5)(x)
@@ -177,7 +177,7 @@ class AuxOnePipeline:
         self,
         partitions_path,
         graphs_path,
-        init_lr = 1e-4,
+        init_lr = 1e-4, 
         train_batch_size = 32,
         valid_batch_size = 32,
         epoch_batch = 5,

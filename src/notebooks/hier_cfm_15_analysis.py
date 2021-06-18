@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 
 import sys
 from pathlib import Path
+from statistics import variance
 
 sys.path.append(str(Path(__file__).parent.parent.parent.absolute()))
 
-from auxiliary_partition.config import cfm_dir, graphs_dir
+from auxiliary_partition.config import cfm_dir, graphs_dir, AUX_EPOCH_SECS, BASE_EPOCH_SECS
 
 from src.postprocess.cfm_to_gephi import to_gephi
 
@@ -186,7 +187,6 @@ def f1_collection_instead_of_variance(cfm):
         f1_by_race.append(age_f1(cfm,i))
     return f1_by_race
 
-
 def get_stats_for_cfm_list(cfm_list,n=16):
     x = []
     a_r_var = []
@@ -195,11 +195,26 @@ def get_stats_for_cfm_list(cfm_list,n=16):
 
     f1_scatter_x = []
     f1_scatter_accuracies = []
+    f1_var = []
     scatter_x = []
     scatter_accuracies = []
 
     for i in range(n):
         cfm = cfm_list[i]
+        if n == 22:
+            ## THIS IS A BASE n=30 cfm ###
+            updated_cfm=[]
+            for _ in range(15):
+                updated_cfm.append([0]*15)
+            for j in range(15):
+                for k in range(15):
+                    updated_cfm[j][k] += cfm[2*j][2*k]
+                    updated_cfm[j][k] += cfm[2*j+1][2*k]
+                    updated_cfm[j][k] += cfm[2*j][2*k+1]
+                    updated_cfm[j][k] += cfm[2*j+1][2*k+1]
+            cfm = updated_cfm
+        else:
+            print("other", len(cfm))
         to_gephi(cfm,cfm_dir / "{}.csv".format(i))
         a_cfm,r_cfm = create_sub_cfms(cfm)
         to_gephi(a_cfm,cfm_dir / "{}_age.csv".format(i))
@@ -210,6 +225,7 @@ def get_stats_for_cfm_list(cfm_list,n=16):
         age_accuracies_by_race = distribution_collection_instead_of_variance(cfm)
         f1_scores_by_race = f1_collection_instead_of_variance(cfm)
 
+        f1_var.append(variance(f1_scores_by_race))
         f1_scatter_x = f1_scatter_x + [(i+1)*5]*len(f1_scores_by_race)
         f1_scatter_accuracies = f1_scatter_accuracies + f1_scores_by_race
         scatter_x = scatter_x + [(i+1)*5]*len(age_accuracies_by_race)
@@ -217,57 +233,74 @@ def get_stats_for_cfm_list(cfm_list,n=16):
         a_r_var.append(var)
         a_acc.append(acc)
         macro_f1_vals.append(macro_f1)
-    return x, a_r_var, a_acc, macro_f1_vals, scatter_x, scatter_accuracies, f1_scatter_x, f1_scatter_accuracies
+
+    return x, a_r_var, a_acc, macro_f1_vals, scatter_x, scatter_accuracies, f1_scatter_x, f1_scatter_accuracies, f1_var
     
-
-
 def modified_cfm_race_age_main():
     # Evaluate Accuracy of Base Models (5-100)
     hierarchical_30_cfms = np.load(cfm_dir / 'final_cfms_30.npy',allow_pickle=True)
     hierarchical_15_cfms_pt1 = np.load(cfm_dir / 'final_cfms_one_15.npy',allow_pickle=True)
     hierarchical_15_cfms_pt2 = np.load(cfm_dir / 'final_cfms_full_15.npy',allow_pickle=True)
-    base_cfms = np.load(cfm_dir / 'base_cfms.npy',allow_pickle=True)
+    base_cfms = np.load(cfm_dir / 'base_cfms_30.npy',allow_pickle=True)
     print("Loaded CFMs.")
-    x, hier_30_a_r_var, hier_30_a_acc, hier_30_macro_f1_vals, hier_30_x, hier_30_scatter, hier_30_f1_x, hier_30_f1_scatter = get_stats_for_cfm_list(hierarchical_30_cfms)
-    _, hier_15_1_a_r_var, hier_15_1_a_acc, hier_15_1_macro_f1_vals, hier_15_1_x, hier_15_1_scatter, hier_15_1_f1_x, hier_15_1_f1_scatter = get_stats_for_cfm_list(hierarchical_15_cfms_pt1)
-    _, hier_15_2_a_r_var, hier_15_2_a_acc, hier_15_2_macro_f1_vals, hier_15_2_x, hier_15_2_scatter, hier_15_2_f1_x, hier_15_2_f1_scatter = get_stats_for_cfm_list(hierarchical_15_cfms_pt2)
-    _, base_a_r_var, base_a_acc, base_macro_f1_vals, base_x, base_scatter, base_f1_x, base_f1_scatter = get_stats_for_cfm_list(base_cfms)
-    
+    x, hier_30_a_r_var, hier_30_a_acc, hier_30_macro_f1_vals, hier_30_x, hier_30_scatter, hier_30_f1_x, hier_30_f1_scatter, hier_30_f1_var = get_stats_for_cfm_list(hierarchical_30_cfms)
+    _, hier_15_1_a_r_var, hier_15_1_a_acc, hier_15_1_macro_f1_vals, hier_15_1_x, hier_15_1_scatter, hier_15_1_f1_x, hier_15_1_f1_scatter, hier_15_1_f1_var = get_stats_for_cfm_list(hierarchical_15_cfms_pt1)
+    _, hier_15_2_a_r_var, hier_15_2_a_acc, hier_15_2_macro_f1_vals, hier_15_2_x, hier_15_2_scatter, hier_15_2_f1_x, hier_15_2_f1_scatter, hier_15_2_f1_var = get_stats_for_cfm_list(hierarchical_15_cfms_pt2)
+    general_x, base_a_r_var, base_a_acc, base_macro_f1_vals, base_x, base_scatter, base_f1_x, base_f1_scatter, base_f1_var = get_stats_for_cfm_list(base_cfms,n=22)
+    x_for_aux = [i + i*AUX_EPOCH_SECS/BASE_EPOCH_SECS for i in x]
+    hier_15_1_x = [i + i*AUX_EPOCH_SECS/BASE_EPOCH_SECS for i in hier_15_1_x]
+    hier_15_2_x = [i + i*AUX_EPOCH_SECS/BASE_EPOCH_SECS for i in hier_15_2_x]
+    hier_15_1_f1_x = [i + i*AUX_EPOCH_SECS/BASE_EPOCH_SECS for i in hier_15_1_f1_x]
+    hier_15_2_f1_x = [i + i*AUX_EPOCH_SECS/BASE_EPOCH_SECS for i in hier_15_2_f1_x]
+    hier_30_x = [i + i*AUX_EPOCH_SECS/BASE_EPOCH_SECS for i in hier_30_x]
+    hier_30_f1_x = [i + i*AUX_EPOCH_SECS/BASE_EPOCH_SECS for i in hier_30_f1_x]
 
-    plt.plot(x,base_a_r_var,label="Base")
-    plt.plot(x,hier_15_1_a_r_var,label="Hierarchical_15 - Partition 1")
-    plt.plot(x,hier_15_2_a_r_var,label="Hierarchical_15 - Partition 2")
-    plt.plot(x,hier_30_a_r_var,label="Hierarchical_30")
+    plt.plot(general_x,base_a_r_var,label="Base")
+    plt.plot(x_for_aux,hier_15_1_a_r_var,label="Hierarchical_15 - Partition 1")
+    plt.plot(x_for_aux,hier_15_2_a_r_var,label="Hierarchical_15 - Partition 2")
+    plt.plot(x_for_aux,hier_30_a_r_var,label="Hierarchical_30")
 
-    plt.title("UTKFace: Statistical Parity of Age Recall (by Race) - 5 Classes")
-    plt.xlabel("Epochs")
+    plt.title("UTKFace: Inverse Statistical Parity of Age Accuracy (by Race) - 5 Classes")
+    plt.xlabel("Training Time (in units of Base Model Epoch Length)")
     plt.ylabel("Variance")
     plt.legend()
     plt.savefig(graphs_dir / "combined_15_a_r_acc.jpg")
     plt.show()
 
-    plt.plot(x,base_a_acc,label="Base")
-    plt.plot(x,hier_15_1_a_acc,label="Hierarchical_15 - Partition 1")
-    plt.plot(x,hier_15_2_a_acc,label="Hierarchical_15 - Partition 2")
-    plt.plot(x,hier_30_a_acc,label="Hierarchical_30")
+    plt.plot(general_x,base_a_acc,label="Base")
+    plt.plot(x_for_aux,hier_15_1_a_acc,label="Hierarchical_15 - Partition 1")
+    plt.plot(x_for_aux,hier_15_2_a_acc,label="Hierarchical_15 - Partition 2")
+    plt.plot(x_for_aux,hier_30_a_acc,label="Hierarchical_30")
     
-    plt.title("UTKFace: Age Recall - 3 Classes")
-    plt.xlabel("Epochs")
-    plt.ylabel("Recall")
+    plt.title("UTKFace: Age Accuracy - 3 Classes")
+    plt.xlabel("Training Time (in units of Base Model Epoch Length)")
+    plt.ylabel("Accuracy")
     plt.legend()
     plt.savefig(graphs_dir / "combined_15_a_acc.jpg")
     plt.show()
 
-    plt.plot(x,base_macro_f1_vals,label="Base")
-    plt.plot(x,hier_15_1_macro_f1_vals,label="Hierarchical_15 - Partition 1")
-    plt.plot(x,hier_15_2_macro_f1_vals,label="Hierarchical_15 - Partition 2")
-    plt.plot(x,hier_30_macro_f1_vals,label="Hierarchical_30")
+    plt.plot(general_x,base_macro_f1_vals,label="Base")
+    plt.plot(x_for_aux,hier_15_1_macro_f1_vals,label="Hierarchical_15 - Partition 1")
+    plt.plot(x_for_aux,hier_15_2_macro_f1_vals,label="Hierarchical_15 - Partition 2")
+    plt.plot(x_for_aux,hier_30_macro_f1_vals,label="Hierarchical_30")
 
     plt.title("UTKFace: Macro F1 (by Race) - 5 Classes")
-    plt.xlabel("Epochs")
+    plt.xlabel("Training Time (in units of Base Model Epoch Length)")
     plt.ylabel("Macro F1 Score")
     plt.legend()
     plt.savefig(graphs_dir / "combined_15_macro_f1_vals.jpg")
+    plt.show()
+
+    plt.plot(general_x,base_f1_var,label="Base")
+    plt.plot(x_for_aux,hier_15_1_f1_var,label="Hierarchical_15 - Partition 1")
+    plt.plot(x_for_aux,hier_15_2_f1_var,label="Hierarchical_15 - Partition 2")
+    plt.plot(x_for_aux,hier_30_f1_var,label="Hierarchical_30")
+
+    plt.title("UTKFace: Inverse Statistical Parity of Macro F1 (by Race) - 5 Classes")
+    plt.xlabel("Training Time (in units of Base Model Epoch Length)")
+    plt.ylabel("Variance")
+    plt.legend()
+    plt.savefig(graphs_dir / "combined_15_macro_f1_var.jpg")
     plt.show()
 
     plt.scatter(base_x, base_scatter,label="Base")
@@ -275,9 +308,9 @@ def modified_cfm_race_age_main():
     plt.scatter(hier_15_2_x, hier_15_2_scatter,label="Hierarchical_15 - Partition 2")
     plt.scatter(hier_30_x, hier_30_scatter,label="Hierarchical_30")
 
-    plt.title("UTKFace: Age Recall Distribution by Race Label")
-    plt.xlabel("Epochs")
-    plt.ylabel("Recall")
+    plt.title("UTKFace: Age Accuracy Distribution by Race Label")
+    plt.xlabel("Training Time (in units of Base Model Epoch Length)")
+    plt.ylabel("Accuracy")
     plt.legend()
     plt.savefig(graphs_dir / "combined_15_age_acc_dist.jpg")
     plt.show()
@@ -288,7 +321,7 @@ def modified_cfm_race_age_main():
     plt.scatter(hier_30_f1_x, hier_30_f1_scatter,label="Hierarchical_30")
 
     plt.title("UTKFace: F1 Score by Race Label")
-    plt.xlabel("Epochs")
+    plt.xlabel("Training Time (in units of Base Model Epoch Length)")
     plt.ylabel("F1")
     plt.legend()
     plt.savefig(graphs_dir / "combined_15_f1_dist.jpg")
@@ -297,9 +330,9 @@ def modified_cfm_race_age_main():
     plt.scatter(hier_15_1_x, hier_15_1_scatter,label="Hierarchical_15 - Partition 1")
     plt.scatter(hier_15_2_x, hier_15_2_scatter,label="Hierarchical_15 - Partition 2")
 
-    plt.title("UTKFace: Age Recall Distribution by Race Label")
-    plt.xlabel("Epochs")
-    plt.ylabel("Recall")
+    plt.title("UTKFace: Age Accuracy Distribution by Race Label")
+    plt.xlabel("Training Time (in units of Base Model Epoch Length)")
+    plt.ylabel("Accuracy")
     plt.legend()
     plt.savefig(graphs_dir / "just_15_age_acc_dist.jpg")
     plt.show()
