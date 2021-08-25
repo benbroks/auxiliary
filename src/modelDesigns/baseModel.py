@@ -5,6 +5,7 @@ import sys
 import glob
 import pandas as pd
 import matplotlib.pyplot as plt
+from pyinstrument import Profiler
 
 from sklearn.metrics import confusion_matrix
 
@@ -300,8 +301,8 @@ class BasePipeline:
     def train_model(
         self,
         init_lr = 1e-4,
-        train_batch_size = 15,
-        valid_batch_size = 15,
+        train_batch_size = 16,
+        valid_batch_size = 16,
         epoch_batch = 5,
         epochs = 100,
         checkpoint_dir="checkpoint/base_epochs_"
@@ -325,15 +326,39 @@ class BasePipeline:
             current_checkpoint = checkpoint_dir / "base_epochs_{}".format(str((i+1)*epoch_batch))
             if i != 0:
                 self.model = load_model(checkpoint_dir / "base_epochs_{}".format(str((i)*epoch_batch)))
-            train_gen = self.data_generator.generate_images(self.train_idx, is_training=True, batch_size=train_batch_size)
-            valid_gen = self.data_generator.generate_images(self.valid_idx, is_training=True, batch_size=valid_batch_size)
+            print(len(self.train_idx), len(self.valid_idx))
+            train_images_collection, train_status_collection = self.data_generator.pre_generate_images(
+                self.train_idx, 
+                batch_size=train_batch_size
+            )
+
+            valid_images_collection, valid_status_collection = self.data_generator.pre_generate_images(
+                self.valid_idx,  
+                batch_size=valid_batch_size
+            )
+            train_gen = self.data_generator.generate_images(
+                is_training=True, 
+                images_collection=train_images_collection, 
+                status_collection=train_status_collection
+            )
+            valid_gen = self.data_generator.generate_images(
+                is_training=True, 
+                images_collection=valid_images_collection, 
+                status_collection=valid_status_collection
+            )
+            profiler = Profiler()
+            profiler.start()
             history = self.model.fit_generator(train_gen,
                     steps_per_epoch=len(self.train_idx)//train_batch_size,
-                    epochs=epoch_batch,
+                    # epochs=epoch_batch,
+                    epochs=1,
                     validation_data=valid_gen,
                     validation_steps=len(self.valid_idx)//valid_batch_size)
+            profiler.stop()
+            profiler.print(show_all=True)
+            
             # full_history.append(history)
-            self.model.save(current_checkpoint)
+            # self.model.save(current_checkpoint)
     
     def results_15_by_model(self, m, test_batch_size = 128):
         self.build_generator()

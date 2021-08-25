@@ -157,10 +157,8 @@ class UtkFaceDataGenerator():
         """
         Used to generate a batch with images when training/testing/validating our Keras model.
         """
-        
-        i = 0
         while True:
+            for i,s in zip(images_collection,status_collection):
+                yield i,s
             if not is_training:
                 break
-            yield images_collection[i], status_collection[i]
-            i += 1

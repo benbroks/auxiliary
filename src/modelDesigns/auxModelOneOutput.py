@@ -4,6 +4,7 @@ import glob
 import os
 import pickle
 import math
+from pyinstrument import Profiler
 
 import pandas as pd 
 import numpy as np
@@ -132,15 +133,11 @@ class UtkFaceDataGeneratorAuxOneModel(UtkFaceDataGenerator):
         """
         Overriding generate images from base class. Only returning status as output rather than age/race/gender.
         """
-        i = 0
         while True:
-            try:
-                if not is_training:
-                    break
-                yield images_collection[i], status_collection[i]
-                i += 1
-            except:
-                print("Current ~attempted~ batch number:", i)
+            for i,s in zip(images_collection,status_collection):
+                yield i,s
+            if not is_training:
+                break
 
 class AuxOnePipeline:
     def __init__(
@@ -195,14 +192,12 @@ class AuxOnePipeline:
                 num_classes=self.num_classes
             )
             aux_train_idx, aux_valid_idx, _ = data_generator_aux.generate_split_indexes()
-            print("Number of train batches we have:", len(aux_train_idx)//train_batch_size)
 
             train_images_collection, train_status_collection = data_generator_aux.pre_generate_images(
                 aux_train_idx, 
                 batch_size=train_batch_size
             )
 
-            print("Number of valid batches we have:", len(aux_valid_idx)//valid_batch_size)
             valid_images_collection, valid_status_collection = data_generator_aux.pre_generate_images(
                 aux_valid_idx,  
                 batch_size=valid_batch_size
@@ -219,8 +214,9 @@ class AuxOnePipeline:
             )
 
             aux_model = self.build_model()
-            print(aux_model.summary())
             es = EarlyStopping(monitor='val_loss',mode='min',patience=10)
+            profiler = Profiler()
+            profiler.start()
             history = aux_model.fit(aux_train_gen,
                     steps_per_epoch=len(aux_train_idx)//train_batch_size,
                     epochs=(i+1)*5,
@@ -228,6 +224,8 @@ class AuxOnePipeline:
                     validation_steps=len(aux_valid_idx)//valid_batch_size,
                     callbacks=[es]
             )
+            profiler.stop()
+            profiler.print(show_all=True)
             
             aux_model.save(str(checkpoint_path)+"_"+str((i+1)*5))  
             y = history.history['val_loss'] 
