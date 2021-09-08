@@ -326,7 +326,7 @@ class BasePipeline:
             current_checkpoint = checkpoint_dir / "base_epochs_{}".format(str((i+1)*epoch_batch))
             if i != 0:
                 self.model = load_model(checkpoint_dir / "base_epochs_{}".format(str((i)*epoch_batch)))
-            print(len(self.train_idx), len(self.valid_idx))
+            print(self.model.summary())
             train_images_collection, train_status_collection = self.data_generator.pre_generate_images(
                 self.train_idx, 
                 batch_size=train_batch_size

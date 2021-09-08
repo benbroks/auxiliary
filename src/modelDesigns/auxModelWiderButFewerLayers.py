@@ -29,34 +29,24 @@ from src.modelDesigns.utk_face_data_generator import UtkFaceDataGenerator
 
 class AuxModel:
     def structure(self,inputs):
-        x = Conv2D(16, (3, 3), padding="same")(inputs)
+        x = Conv2D(16, (3, 3), strides=(2,2), padding="same")(inputs)
         x = Activation("relu")(x)
-        #x = BatchNormalization(axis=-1)(x)
-        x = MaxPooling2D(pool_size=(3, 3))(x)
-        x = Dropout(0.25)(x)
-
-        x = Conv2D(32, (3, 3), padding="same")(x)
-        x = Activation("relu")(x)
-        #x = BatchNormalization(axis=-1)(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
         x = Dropout(0.25)(x)
-
-        x = Conv2D(32, (3, 3), padding="same")(x)
+        
+        x = Conv2D(16, (3, 3), strides=(2,2), padding="same")(x)
         x = Activation("relu")(x)
-        # x = BatchNormalization(axis=-1)(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
         x = Dropout(0.25)(x)
-
-        x = Conv2D(32, (3, 3), padding="same")(x)
+        
+        x = Conv2D(16, (3, 3), strides=(2,2),padding="same")(x)
         x = Activation("relu")(x)
-        # x = BatchNormalization(axis=-1)(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
         x = Dropout(0.25)(x)
-
+        
         x = Flatten()(x)
-        x = Dense(64)(x)
+        x = Dense(36)(x)
         x = Activation("relu")(x)
-        # x = BatchNormalization()(x)
         x = Dropout(0.5)(x)
         x = Dense(1)(x)
         x = Activation("sigmoid")(x) #using sigmoid instead of softmax improved accuracy by a lot
@@ -184,7 +174,7 @@ class AuxOnePipeline:
         with open(partitions_path, "rb") as fp:   # Unpickling
             set_partitions = pickle.load(fp)
         # Training Auxiliary Models!
-        for i in range(18,int(epochs/epoch_batch)):
+        for i in range(int(epochs/epoch_batch)):
             data_generator_aux = UtkFaceDataGeneratorAuxOneModel(
                 self.dataset_folder_name,
                 set_partitions[i],

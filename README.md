@@ -2,6 +2,8 @@
 
 Check out `src/notebooks/pipeline.py` for an execution of the full training cycle.
 
+TODO: How do we generate graphs?
+
 Core process:
 - Train a base classifier (e.g. CNN that identifies a person's age bracket based on a face photo).
 - Generate confusion matrix on a validation set using the base classifier. The confusion matrix now represents a graph of _N_ nodes where _N_ = # of Unique Output Classes. Misclassifications are represented as weighted edges between nodes. Self loops are correct classifications (not relevant).

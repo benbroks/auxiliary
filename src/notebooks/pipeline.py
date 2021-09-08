@@ -5,7 +5,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent.absolute()))
 
 from src.modelDesigns.baseModel import BasePipeline
-from src.modelDesigns.auxModelOneOutput import AuxOnePipeline
+# from src.modelDesigns.auxModelOneOutput import AuxOnePipeline
+from src.modelDesigns.auxModelWiderButFewerLayers import AuxOnePipeline
 from src.modelDesigns.auxModelTwoOutput import AuxTwoPipeline
 from src.postprocess.graph_analysis import graph_pipeline
 from src.modelDesigns.hierModel import generate_hierarchical_results
@@ -42,5 +43,5 @@ def train_hier():
     generate_hierarchical_results()
 
 if __name__ == '__main__':
-    train_base()
+    train_hier()
 
